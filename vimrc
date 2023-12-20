@@ -154,7 +154,7 @@ filetype plugin indent on    " required
 set vb t_vb=
 
 " powerline
-set rtp+=/usr/share/vim/addons/
+set rtp+=/usr/share/powerline/bindings/vim/
 set laststatus=2
 set t_Co=256
 
