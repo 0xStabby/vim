@@ -196,14 +196,19 @@ set exrc
 set secure
 
 " automatically save folds, and load them when i open up a file
-augroup AutoSaveFolds
-  if @% !=""
-    autocmd!
-    autocmd BufWinLeave * mkview
-    autocmd BufWinEnter * silent loadview
-  endif
-augroup END
+" augroup AutoSaveFolds
+  " if @% !=""
+    " autocmd!
+    " autocmd BufWinLeave * mkview
+    " autocmd BufWinEnter * silent loadview
+  " endif
+" augroup END
 
+augroup AutoSaveFolds
+  autocmd!
+  autocmd BufWinLeave * if expand('%:p') != '' | mkview | endif
+  autocmd BufWinEnter * if filereadable(expand('%:p')) | silent loadview | endif
+augroup END
 
 " :command! MoveWrite -bang -range -nargs=1 -complete=file MoveWrite  <line1>,<line2>write<bang> <args> | <line1>,<line2>delete _
 " :command! MoveAppend -bang -range -nargs=1 -complete=file MoveAppend <line1>,<line2>write<bang> >> <args> | <line1>,<line2>delete _
@@ -223,3 +228,6 @@ python3 import sys;sys.path.append("/usr/lib/python3.10/site-packages/")
 python3 import sys;sys.path.append("/usr/lib/python3.9/site-packages/")
 
 nnoremap <leader>jq :%!jq .<CR>
+
+" fix backspace
+set backspace=indent,eol,start
