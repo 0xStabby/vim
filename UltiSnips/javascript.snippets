@@ -1,0 +1,34 @@
+priority 0
+
+global !p
+import re, vim
+NAME = r"[A-Za-z_$][A-Za-z0-9_$]*"
+PATTERNS = [
+    re.compile(rf"\bexport\s+default\s+function\s+({NAME})\s*\("),
+    re.compile(rf"\bexport\s+(?:async\s+)?function\s+({NAME})\s*\("),
+    re.compile(rf"\bfunction\s+({NAME})\s*\("),
+    re.compile(rf"\b(?:const|let|var)\s+({NAME})\s*=\s*(?:async\s*)?function\s*\("),
+    re.compile(rf"\b(?:const|let|var)\s+({NAME})\s*=\s*(?:async\s*)?\([^)]*\)\s*=>"),
+    re.compile(rf"\bexport\s+default\s+(?:const|let|var)\s+({NAME})\s*=\s*(?:async\s*)?\([^)]*\)\s*=>"),
+    re.compile(rf"^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:async\s+)?(?!if\b|for\b|while\b|switch\b|catch\b)({NAME})\s*\("),
+]
+def guess_func_name():
+    buf = vim.current.buffer
+    row = int(vim.eval('line(".")')) - 1
+    for ln in range(row, max(0, row-300)-1, -1):
+        s = buf[ln]
+        for rx in PATTERNS:
+            m = rx.search(s)
+            if m: return m.group(1)
+    return ""
+endglobal
+
+# console.error("[`!v expand('%:t')`] (${1:`!p snip.rv = guess_func_name() or 'functionName'`}) Error:", ${2:e});
+snippet cerr "console.error with [File] (func) Error" b
+console.error("[`!v expand('%:t:r')`] (${1:`!p snip.rv = guess_func_name() or 'functionName'`}) Error:", ${2:e});
+endsnippet
+
+# console.log("[`!v expand('%:t')`] (${1:`!p snip.rv = guess_func_name() or 'functionName'`}) ${2:var}:", `!p snip.rv = t[2]`);
+snippet clog "console.log with [File] (func) var" b
+console.log("[`!v expand('%:t:r')`] (${1:`!p snip.rv = guess_func_name() or 'functionName'`}) ${2:var}:", `!p snip.rv = t[2]`);
+endsnippet

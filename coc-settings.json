@@ -1,0 +1,7 @@
+{
+  "extensions.updateCheck": "daily",
+  "eslint.packageManager": "pnpm",
+  "coc.preferences.packageManager": "pnpm",
+  "explorer.openAction.strategy": "sourceWindow",
+  "explorer.quitOnOpen": true
+}
