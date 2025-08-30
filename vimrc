@@ -516,6 +516,63 @@ function! s:EslintFix(...) abort
 endfunction
 command! -nargs=* EslintFix call s:EslintFix(<f-args>)
 
+" --- KNIP → Quickfix (repo-root, absolute paths, refreshable) ---
+function! s:Knip(...) abort
+  let save_cwd = getcwd()
+  let root = trim(system('git rev-parse --show-toplevel'))
+  if v:shell_error != 0 || empty(root) | let root = save_cwd | endif
+  execute 'lcd' fnameescape(root)
+
+  let args = empty(a:000) ? '' : (' ' . join(map(copy(a:000), 'shellescape(v:val)'), ' '))
+  let lines = systemlist('pnpm -s knip' . args)
+
+  let section = ''
+  let qf = []
+  for l in lines
+    let l = trim(l)
+    if l ==# '' | continue | endif
+    if l =~? '^unused files'              | let section = 'Unused files'              | continue | endif
+    if l =~? '^unused dependencies'       | let section = 'Unused dependencies'       | continue | endif
+    if l =~? '^unused devdependencies'    | let section = 'Unused devDependencies'    | continue | endif
+    if l =~? '^unlisted dependencies'     | let section = 'Unlisted dependencies'     | continue | endif
+    if l =~? '^unlisted binaries'         | let section = 'Unlisted binaries'         | continue | endif
+    if l =~? '^unused exports'            | let section = 'Unused exports'            | continue | endif
+    if l =~? '^unused exported types'     | let section = 'Unused exported types'     | continue | endif
+    if l[0] == '>'                        | continue | endif
+
+    " capture trailing file[:ln[:col]]
+    let m = matchlist(l, ' \(\f\+:\d\+:\d\+\)$')
+    if empty(m) | let m = matchlist(l, ' \(\f\+:\d\+\)$') | endif
+    if empty(m) | let m = matchlist(l, ' \(\f\+\)$')      | endif
+    if empty(m) | continue | endif
+
+    let loc  = m[1]
+    let file = loc | let lnum = 1 | let col = 1
+    if loc =~ ':\d\+:\d\+$'
+      let file = matchstr(loc, '^\f\+')
+      let lnum = str2nr(matchstr(loc, ':\zs\d\+\ze:'))
+      let col  = str2nr(matchstr(loc, ':\d\+:\zs\d\+$'))
+    elseif loc =~ ':\d\+$'
+      let file = matchstr(loc, '^\f\+')
+      let lnum = str2nr(matchstr(loc, ':\zs\d\+$'))
+    endif
+    let abs = fnamemodify(file, ':p')
+
+    " left side of the line (name/export/etc.)
+    let name = substitute(l, '\s\V'.escape(loc,'\'), '', '')
+    if name ==# l | let name = section | endif
+
+    call add(qf, {'filename': abs, 'lnum': lnum, 'col': col, 'text': section . ': ' . name})
+  endfor
+
+  call setqflist(qf, 'r')
+  call setqflist([], 'a', {'context': {'kind':'knip','args':a:000,'root':root}})
+  execute 'lcd' fnameescape(save_cwd)
+
+  if empty(qf) | cclose | echo 'knip: clean' | else | copen | endif
+endfunction
+command! -nargs=* Knip call s:Knip(<f-args>)
+
 function! s:QfRefresh() abort
   let info = getqflist({'context':1})
   let ctx = get(info, 'context', {})
@@ -528,6 +585,9 @@ function! s:QfRefresh() abort
   elseif get(ctx,'kind','') ==# 'tsprune'
     let argstr = empty(get(ctx,'args',[])) ? '' : join(map(copy(ctx.args), 'shellescape(v:val)'), ' ')
     execute 'TsPrune ' . argstr
+  elseif get(ctx,'kind','') ==# 'knip'
+    let argstr = empty(get(ctx,'args',[])) ? '' : join(map(copy(ctx.args), 'shellescape(v:val)'), ' ')
+    execute 'Knip ' . argstr
   else
     echo 'unknown quickfix context' | return
   endif
